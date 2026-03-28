@@ -1,0 +1,61 @@
+name: Sync custom feed packages
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout current repo
+        uses: actions/checkout@v4
+
+      - name: Prepare workspace
+        run: |
+          rm -rf tmp
+          mkdir -p tmp packages
+
+      - name: Clone upstream packages
+        run: |
+          git clone --depth=1 https://github.com/jerrykuku/luci-theme-argon.git tmp/luci-theme-argon
+          git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config.git tmp/luci-app-argon-config
+          git clone --depth=1 https://github.com/tty228/luci-app-wechatpush.git tmp/luci-app-wechatpush
+
+      - name: Sync package contents as normal directories
+        run: |
+          rm -rf packages/luci-theme-argon
+          rm -rf packages/luci-app-argon-config
+          rm -rf packages/luci-app-wechatpush
+
+          mkdir -p packages/luci-theme-argon
+          mkdir -p packages/luci-app-argon-config
+          mkdir -p packages/luci-app-wechatpush
+
+          rsync -a --delete --exclude='.git' tmp/luci-theme-argon/ packages/luci-theme-argon/
+          rsync -a --delete --exclude='.git' tmp/luci-app-argon-config/ packages/luci-app-argon-config/
+          rsync -a --delete --exclude='.git' tmp/luci-app-wechatpush/ packages/luci-app-wechatpush/
+
+          rm -rf tmp
+          rm -f .gitmodules
+
+      - name: Sanity check
+        run: |
+          ! find packages -name .git -type d | grep .
+          ! git ls-files --stage | grep 160000
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --cached --quiet || git commit -m "sync upstream packages"
+
+      - name: Push changes
+        run: |
+          git push
