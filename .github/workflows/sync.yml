@@ -80,6 +80,10 @@ jobs:
           find packages -type f -name Makefile -print0 | xargs -0 sed -i \
             's#^include ../../luci.mk$#include $(TOPDIR)/feeds/luci/luci.mk#g'
 
+      - name: Normalize APK-incompatible versions
+        run: |
+          sed -i 's/^PKG_VERSION:=v/PKG_VERSION:=/' packages/luci-app-diskman/Makefile
+
       - name: Cleanup extra upstream metadata
         run: |
           find packages -type d -name .github -prune -exec rm -rf {} +
