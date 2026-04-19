@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: "0 3 * * 1"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
 
@@ -80,9 +83,15 @@ jobs:
           find packages -type f -name Makefile -print0 | xargs -0 sed -i \
             's#^include ../../luci.mk$#include $(TOPDIR)/feeds/luci/luci.mk#g'
 
-      - name: Normalize APK-incompatible versions
+      - name: Normalize APK-incompatible package versions
         run: |
-          sed -i 's/^PKG_VERSION:=v/PKG_VERSION:=/' packages/luci-app-diskman/Makefile
+          find packages -type f -name Makefile -print0 | while IFS= read -r -d '' f; do
+            sed -i 's/^PKG_VERSION:=v\([0-9]\)/PKG_VERSION:=\1/' "$f"
+          done
+
+      - name: Check for remaining APK-incompatible versions
+        run: |
+          ! grep -R '^PKG_VERSION:=v[0-9]' packages
 
       - name: Cleanup extra upstream metadata
         run: |
